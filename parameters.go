@@ -7,19 +7,19 @@ import (
 
 // readerParams contains the parameters for the reader.
 type readerParams struct {
-	peakSize int                   // The number of bytes to peak
+	peekSize int                   // The number of bytes to peak
 	norm     transform.Transformer // The normalization form NFC or NFD
 }
 
 // option is a functional option for the reader.
 type option func(*readerParams)
 
-// WithPeakSize sets the number of bytes to peak.
+// WithPeekSize sets the number of bytes to peak.
 // By default it peaks 4096 bytes.
 // The peaked bytes are used to detect the encoding.
-func WithPeakSize(size int) option {
+func WithPeekSize(size int) option {
 	return func(p *readerParams) {
-		p.peakSize = size
+		p.peekSize = size
 	}
 }
 
@@ -42,7 +42,7 @@ func WithNormalizationForm(nor string) option {
 // newParams returns a new readerParams with the options set.
 func newParams(options ...option) *readerParams {
 	p := &readerParams{
-		peakSize: 4096,
+		peekSize: 4096,
 	}
 	for _, opt := range options {
 		opt(p)

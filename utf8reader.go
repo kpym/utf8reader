@@ -10,7 +10,7 @@ import (
 	"golang.org/x/text/transform"
 )
 
-// peekReader allows to peak the first bytes of a reader.
+// peekReader allows to peek the first bytes of a reader.
 // buf contains the first bytes of the reader.
 // buf is set to nil when the buffer is empty.
 // r is the underlying reader.
@@ -19,7 +19,7 @@ type peekReader struct {
 	r   io.Reader
 }
 
-// newPeekReader returns a new peekReader that peaks the first n bytes of the reader
+// newPeekReader returns a new peekReader that peeks the first n bytes of the reader
 // and stores them in the buffer.
 // If some error occurs while reading the first n bytes, a nil peekReader is returned.
 func newPeekReader(r io.Reader, n int) (*peekReader, error) {
@@ -58,7 +58,7 @@ func (r *peekReader) Read(p []byte) (n int, err error) {
 	return r.r.Read(p)
 }
 
-// peek returns the peak buffer.
+// peek returns the peek buffer.
 // This function should be called before any Read operation.
 func (r *peekReader) peek() []byte {
 	return r.buf
@@ -75,7 +75,7 @@ func (r *peekReader) skip(n int) {
 // Reader is a reader that converts the input to UTF-8.
 type Reader struct {
 	enc string                // the detected encoding
-	buf []byte                // the peak buffer used to detect the encoding
+	buf []byte                // the peek buffer used to detect the encoding
 	t   transform.Transformer // the encoding transformer & possibly the normalization transformer
 	tr  io.Reader             // the underlying reader
 }
@@ -89,9 +89,9 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 	return r.tr.Read(p)
 }
 
-// Peak returns the first bytes of the reader transformed to UTF-8.
+// Peek returns the first bytes of the reader transformed to UTF-8.
 // This function should be called before any Read operation.
-func (r *Reader) Peak() ([]byte, error) {
+func (r *Reader) Peek() ([]byte, error) {
 	if r.buf == nil {
 		return nil, io.EOF
 	}
@@ -122,8 +122,8 @@ func New(r io.Reader, options ...option) *Reader {
 	}
 	params := newParams(options...)
 
-	// Peak the first bytes to detect the encoding
-	pr, err := newPeekReader(r, params.peakSize)
+	// peek the first bytes to detect the encoding
+	pr, err := newPeekReader(r, params.peekSize)
 	if err != nil {
 		return nil
 	}

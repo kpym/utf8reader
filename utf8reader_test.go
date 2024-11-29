@@ -40,7 +40,7 @@ func TestNew(t *testing.T) {
 	}
 
 	sr.Seek(0, 0)
-	r = New(sr, WithPeakSize(8192))
+	r = New(sr, WithPeekSize(8192))
 	if r == nil {
 		t.Errorf("New(strings.NewReader(\"bête\"), WithPeakSize(8192)) = nil, want *Reader")
 	} else {
@@ -78,7 +78,7 @@ func TestPick(t *testing.T) {
 	if r == nil {
 		t.Errorf("New(strings.NewReader(\"test\")) = nil, want *Reader")
 	}
-	s, err := r.Peak()
+	s, err := r.Peek()
 	if err != nil {
 		t.Errorf("r.Peak() = %v, want nil", err)
 	}
@@ -91,7 +91,7 @@ func TestPick(t *testing.T) {
 	if r == nil {
 		t.Errorf("New(bytes.NewReader([]byte{0x62, 0x00, 0xe9, 0x00, 0x74, 0x00, 0xe0, 0x00})) = nil, want *Reader")
 	}
-	s, err = r.Peak()
+	s, err = r.Peek()
 	if err != nil {
 		t.Errorf("r.Peak() = %v, want nil", err)
 	}
@@ -104,7 +104,7 @@ func TestPick(t *testing.T) {
 	if r == nil {
 		t.Errorf("New(bytes.NewReader([]byte{0x62, 0x00, 0xe9, 0x00, 0x74, 0x00, 0xe0})) = nil, want *Reader")
 	}
-	s, err = r.Peak()
+	s, err = r.Peek()
 	if err != nil {
 		t.Errorf("r.Peak() = %v, want nil", err)
 	}
