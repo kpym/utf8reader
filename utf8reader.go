@@ -1,5 +1,5 @@
 // utf8reader is a package that detects the encoding of a reader
-// and provides a new reader that converts the input to UTF-8.
+// and provides a new reader that converts (if necessary) the input to UTF-8 (without BOM).
 // The unicode normalization form can be set to NFC or NFD.
 package utf8reader
 
@@ -58,10 +58,18 @@ func (r *peekReader) Read(p []byte) (n int, err error) {
 	return r.r.Read(p)
 }
 
-// Peek returns the peak buffer.
+// peek returns the peak buffer.
 // This function should be called before any Read operation.
-func (r *peekReader) Peek() []byte {
+func (r *peekReader) peek() []byte {
 	return r.buf
+}
+
+// skip skips at most n bytes from the buffer.
+func (r *peekReader) skip(n int) {
+	if n > len(r.buf) {
+		n = len(r.buf)
+	}
+	r.buf = r.buf[n:]
 }
 
 // Reader is a reader that converts the input to UTF-8.
@@ -121,8 +129,14 @@ func New(r io.Reader, options ...option) *Reader {
 	}
 	var encoding string
 	var trs []transform.Transformer
-	if beginning := pr.Peek(); len(beginning) > 0 {
-		if encoding = detectCharset(beginning); encoding != "UTF-8" {
+	if beginning := pr.peek(); len(beginning) > 0 {
+		if bom, lb := detectBOM(beginning); bom != "" {
+			encoding = bom
+			pr.skip(lb)
+		} else {
+			encoding = detectCharset(beginning)
+		}
+		if encoding != "UTF-8" {
 			if e, _ := charset.Lookup(encoding); e != nil {
 				trs = append(trs, e.NewDecoder())
 			}
@@ -134,7 +148,7 @@ func New(r io.Reader, options ...option) *Reader {
 	// set the buffer
 	reader := &Reader{
 		enc: encoding,
-		buf: pr.Peek(),
+		buf: pr.peek(),
 	}
 	// chain the transformers
 	var tr transform.Transformer
