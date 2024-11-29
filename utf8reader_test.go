@@ -2,29 +2,33 @@ package utf8reader
 
 import (
 	"bytes"
+	"io"
 	"strings"
 	"testing"
 
 	"golang.org/x/text/unicode/norm"
 )
 
-func TestNew(t *testing.T) {
+func TestNew_nil(t *testing.T) {
 	r := New(nil)
-	if r == nil {
-		t.Errorf("New(nil) = nil, want *Reader")
-	} else {
-		if r.tr != nil {
-			t.Errorf("New(nil).r = %v, want nil", r.tr)
-		}
-		if r.t != nil {
-			t.Errorf("New(nil).t = %v, want nil", r.t)
-		}
-		if r.buf != nil {
-			t.Errorf("New(nil).buf = %v, want nil", r.buf)
-		}
+	if r != nil {
+		t.Errorf("New(nil) = %v, want nil", r)
 	}
+	if r.Encoding() != "" {
+		t.Errorf("New(nil).Encoding() = %s, want \"\"", r.Encoding())
+	}
+	if b, e := r.Peek(); b != nil || e != io.EOF {
+		t.Errorf("New(nil).Peek() = %v, %v, want nil, io.EOF", b, e)
+	}
+	b := make([]byte, 1024)
+	if n, e := r.Read(b); n != 0 || e != io.EOF {
+		t.Errorf("New(nil).Read(nil) = %d, %v, want 0, io.EOF", n, e)
+	}
+}
+
+func TestNew(t *testing.T) {
 	sr := strings.NewReader("bête")
-	r = New(sr)
+	r := New(sr)
 	if r == nil {
 		t.Errorf("New(strings.NewReader(\"bête\")) = nil, want *Reader")
 	} else {
@@ -42,16 +46,16 @@ func TestNew(t *testing.T) {
 	sr.Seek(0, 0)
 	r = New(sr, WithPeekSize(8192))
 	if r == nil {
-		t.Errorf("New(strings.NewReader(\"bête\"), WithPeakSize(8192)) = nil, want *Reader")
+		t.Errorf("New(strings.NewReader(\"bête\"), WithPeekSize(8192)) = nil, want *Reader")
 	} else {
 		if r.tr == nil {
-			t.Errorf("New(strings.NewReader(\"bête\"), WithPeakSize(8192)).r = nil, non nil expected")
+			t.Errorf("New(strings.NewReader(\"bête\"), WithPeekSize(8192)).r = nil, non nil expected")
 		}
 		if r.t != nil {
-			t.Errorf("New(strings.NewReader(\"bête\"), WithPeakSize(8192)).t = %v, want nil", r.t)
+			t.Errorf("New(strings.NewReader(\"bête\"), WithPeekSize(8192)).t = %v, want nil", r.t)
 		}
 		if string(r.buf) != "bête" {
-			t.Errorf("New(strings.NewReader(\"bête\"), WithPeakSize(8192)).buf = %s, want \"bête\"", r.buf)
+			t.Errorf("New(strings.NewReader(\"bête\"), WithPeekSize(8192)).buf = %s, want \"bête\"", r.buf)
 		}
 	}
 
@@ -68,22 +72,22 @@ func TestNew(t *testing.T) {
 		}
 		// check if the buffer contains NFD representation of "bête"
 		if string(r.buf) != "bête" {
-			t.Errorf("New(strings.NewReader(\"bête\"), WithPeakSize(8192)).buf = %s, want \"bête\"", r.buf)
+			t.Errorf("New(strings.NewReader(\"bête\"), WithPeekSize(8192)).buf = %s, want \"bête\"", r.buf)
 		}
 	}
 }
 
-func TestPick(t *testing.T) {
+func TestPeek(t *testing.T) {
 	r := New(strings.NewReader("test"))
 	if r == nil {
 		t.Errorf("New(strings.NewReader(\"test\")) = nil, want *Reader")
 	}
 	s, err := r.Peek()
 	if err != nil {
-		t.Errorf("r.Peak() = %v, want nil", err)
+		t.Errorf("r.Peek() = %v, want nil", err)
 	}
 	if string(s) != "test" {
-		t.Errorf("r.Peak() = %s, want \"test\"", s)
+		t.Errorf("r.Peek() = %s, want \"test\"", s)
 	}
 
 	// UTF-16LE without BOM content : "bétà"
@@ -93,10 +97,10 @@ func TestPick(t *testing.T) {
 	}
 	s, err = r.Peek()
 	if err != nil {
-		t.Errorf("r.Peak() = %v, want nil", err)
+		t.Errorf("r.Peek() = %v, want nil", err)
 	}
 	if string(s) != "bétà" {
-		t.Errorf("r.Peak() = %s, want \"bétà\"", s)
+		t.Errorf("r.Peek() = %s, want \"bétà\"", s)
 	}
 
 	// UTF-16LE without BOM content, truncated from "bétà"
@@ -106,10 +110,10 @@ func TestPick(t *testing.T) {
 	}
 	s, err = r.Peek()
 	if err != nil {
-		t.Errorf("r.Peak() = %v, want nil", err)
+		t.Errorf("r.Peek() = %v, want nil", err)
 	}
 	if string(s) != "bét�" {
-		t.Errorf("r.Peak() = %s, want \"bét�\"", s)
+		t.Errorf("r.Peek() = %s, want \"bét�\"", s)
 	}
 }
 

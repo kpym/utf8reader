@@ -1,6 +1,7 @@
-// utf8reader is a package that detects the encoding of a reader
-// and provides a new reader that converts (if necessary) the input to UTF-8 (without BOM).
-// The unicode normalization form can be set to NFC or NFD.
+// Package utf8reader provides a utility to wrap an io.Reader that contains text
+// in an arbitrary encoding and produce an io.Reader that outputs UTF-8 encoded text.
+// The package automatically detects the original encoding and converts the input to UTF-8.
+// Additionally, it can normalize the text to a specified Unicode normalization form (NFC or NFD).
 package utf8reader
 
 import (
@@ -10,69 +11,7 @@ import (
 	"golang.org/x/text/transform"
 )
 
-// peekReader allows to peek the first bytes of a reader.
-// buf contains the first bytes of the reader.
-// buf is set to nil when the buffer is empty.
-// r is the underlying reader.
-type peekReader struct {
-	buf []byte
-	r   io.Reader
-}
-
-// newPeekReader returns a new peekReader that peeks the first n bytes of the reader
-// and stores them in the buffer.
-// If some error occurs while reading the first n bytes, a nil peekReader is returned.
-func newPeekReader(r io.Reader, n int) (*peekReader, error) {
-	// no small buffer is allowed
-	if n < 1024 {
-		n = 1024
-	}
-	// create the peekReader
-	pr := &peekReader{
-		buf: make([]byte, n),
-		r:   r,
-	}
-	// read the first n bytes
-	n, err := io.ReadFull(r, pr.buf)
-	if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
-		return nil, err
-	}
-	pr.buf = pr.buf[:n]
-	return pr, nil
-}
-
-// Read reads first from the peek buffer and then from the underlying reader.
-func (r *peekReader) Read(p []byte) (n int, err error) {
-	if r == nil {
-		return 0, io.EOF
-	}
-	if len(r.buf) > 0 {
-		n = copy(p, r.buf)
-		r.buf = r.buf[n:]
-		if len(r.buf) == 0 {
-			// we need no buffer anymore, so it can be garbage collected
-			r.buf = nil
-		}
-		return n, nil
-	}
-	return r.r.Read(p)
-}
-
-// peek returns the peek buffer.
-// This function should be called before any Read operation.
-func (r *peekReader) peek() []byte {
-	return r.buf
-}
-
-// skip skips at most n bytes from the buffer.
-func (r *peekReader) skip(n int) {
-	if n > len(r.buf) {
-		n = len(r.buf)
-	}
-	r.buf = r.buf[n:]
-}
-
-// Reader is a reader that converts the input to UTF-8.
+// Reader wraps an io.Reader to convert its input to UTF-8 encoding, if required.
 type Reader struct {
 	enc string                // the detected encoding
 	buf []byte                // the peek buffer used to detect the encoding
@@ -80,7 +19,9 @@ type Reader struct {
 	tr  io.Reader             // the underlying reader
 }
 
-// Read reads the UTF-8 encoded bytes from the reader.
+// Read reads data from the underlying reader, ensuring it is UTF-8 encoded.
+// It returns the number of bytes read into p and any error encountered.
+// If the Reader is nil, it returns 0 and io.EOF.
 func (r *Reader) Read(p []byte) (n int, err error) {
 	if r == nil {
 		return 0, io.EOF
@@ -89,10 +30,12 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 	return r.tr.Read(p)
 }
 
-// Peek returns the first bytes of the reader transformed to UTF-8.
-// This function should be called before any Read operation.
+// Peek returns a UTF-8 encoded snapshot of the first bytes of the reader,
+// primarily for encoding detection. The size of the snapshot is at most
+// the size of the peek buffer, set by the PeekSize option.
+// This method must be called before any Read operations.
 func (r *Reader) Peek() ([]byte, error) {
-	if r.buf == nil {
+	if r == nil || r.buf == nil {
 		return nil, io.EOF
 	}
 	// transform the buffer
@@ -108,17 +51,21 @@ func (r *Reader) Peek() ([]byte, error) {
 	return tbuf, err
 }
 
-// Encoding returns the detected encoding.
+// Encoding returns the encoding detected from the input, or an empty string
+// if detection was unsuccessful, or an error occurred during the detection.
 func (r *Reader) Encoding() string {
+	if r == nil {
+		return ""
+	}
 	return r.enc
 }
 
-// New returns a reader that converts the input to UTF-8
-// if it is not already encoded in UTF-8.
-// If the encoding cannot be detected it returns buffered version of the original reader.
+// New creates a Reader that converts the input to UTF-8.
+// If encoding detection fails the input stays unchanged,
+// and Encoding() will return an empty string.
 func New(r io.Reader, options ...option) *Reader {
 	if r == nil {
-		return &Reader{}
+		return nil
 	}
 	params := newParams(options...)
 
@@ -136,7 +83,7 @@ func New(r io.Reader, options ...option) *Reader {
 		} else {
 			encoding = detectCharset(beginning)
 		}
-		if encoding != "UTF-8" {
+		if encoding != "UTF-8" && encoding != "" {
 			if e, _ := charset.Lookup(encoding); e != nil {
 				trs = append(trs, e.NewDecoder())
 			}
@@ -152,10 +99,12 @@ func New(r io.Reader, options ...option) *Reader {
 	}
 	// chain the transformers
 	var tr transform.Transformer
-	if len(trs) > 1 {
-		tr = transform.Chain(trs...)
-	} else if len(trs) == 1 {
-		tr = trs[0]
+	if encoding != "" {
+		if len(trs) > 1 {
+			tr = transform.Chain(trs...)
+		} else if len(trs) == 1 {
+			tr = trs[0]
+		}
 	}
 	// install the transformer
 	if tr == nil {
