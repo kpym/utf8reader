@@ -7,8 +7,8 @@ import (
 
 // readerParams contains the parameters for the reader.
 type readerParams struct {
-	peekSize int                   // The number of bytes to peak
-	norm     transform.Transformer // The normalization form NFC or NFD
+	peekSize     int                     // The number of bytes to peak
+	transformers []transform.Transformer // The normalization form NFC or NFD
 }
 
 // option is a functional option for the reader.
@@ -23,19 +23,28 @@ func WithPeekSize(size int) option {
 	}
 }
 
-// WithNormalizationForm sets the normalization form.
+// WithNormalization sets the normalization form.
 // The normalization form can be "NFC" or "NFD".
 // By default no normalization is done.
-func WithNormalizationForm(nor string) option {
+// WithNormalization("NFC") is equivalent to WithTransformers(norm.NFC).
+// WithNormalization("NFD") is equivalent to WithTransformers(norm.NFD).
+func WithNormalization(nor string) option {
 	return func(p *readerParams) {
 		switch nor {
 		case "NFC":
-			p.norm = norm.NFC
+			p.transformers = append(p.transformers, norm.NFC)
 		case "NFD":
-			p.norm = norm.NFD
+			p.transformers = append(p.transformers, norm.NFD)
 		default:
 			panic("only NFC and NFD are supported")
 		}
+	}
+}
+
+// WithTransformers append a (set of) transformer(s).
+func WithTransform(transformers ...transform.Transformer) option {
+	return func(p *readerParams) {
+		p.transformers = append(p.transformers, transformers...)
 	}
 }
 

@@ -89,9 +89,10 @@ func New(r io.Reader, options ...option) *Reader {
 			}
 		}
 	}
-	if params.norm != nil {
-		trs = append(trs, params.norm)
-	}
+
+	// add the (normalization) transformer(s)
+	trs = append(trs, params.transformers...)
+
 	// set the buffer
 	reader := &Reader{
 		enc: encoding,

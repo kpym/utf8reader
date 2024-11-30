@@ -60,7 +60,7 @@ func TestNew(t *testing.T) {
 	}
 
 	sr.Seek(0, 0)
-	r = New(sr, WithNormalizationForm("NFD"))
+	r = New(sr, WithNormalization("NFD"))
 	if r == nil {
 		t.Errorf("New(strings.NewReader(\"bête\"), WithNormalizationForm(\"NFD\")) = nil, want *Reader")
 	} else {

@@ -36,6 +36,8 @@ func main() {
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/kpym/utf8reader.svg)](https://pkg.go.dev/github.com/kpym/utf8reader)
 
+You can find the documentation on [pkg.go.dev](https://pkg.go.dev/github.com/kpym/utf8reader).
+
 ## License
 
 [MIT](LICENSE)
